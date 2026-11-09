@@ -1,25 +1,41 @@
-const express = require("express")
-const cookieParser = require("cookie-parser")
-const cors = require("cors")
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const cors = require("cors");
+const path = require("node:path");
 
-const app = express()
+const app = express();
 
-app.use(express.json())
-app.use(cookieParser())
-app.use(cors({
-    origin: "http://localhost:5173",
-    credentials: true
-}))
+app.use(express.json());
+app.use(cookieParser());
 
-/* require all the routes here */
-const authRouter = require("./routes/auth.routes")
-const interviewRouter = require("./routes/interview.routes")
+// CORS is needed only during local development.
+if (process.env.NODE_ENV !== "production") {
+    app.use(cors({
+        origin: "http://localhost:5173",
+        credentials: true
+    }));
+}
 
+// API routes
+const authRouter = require("./routes/auth.routes");
+const interviewRouter = require("./routes/interview.routes");
 
-/* using all the routes here */
-app.use("/api/auth", authRouter)
-app.use("/api/interview", interviewRouter)
+app.use("/api/auth", authRouter);
+app.use("/api/interview", interviewRouter);
 
+// Serve React frontend in production
+if (process.env.NODE_ENV === "production") {
+    const frontendPath = path.join(__dirname, "../../Frontend/dist");
 
+    app.use(express.static(frontendPath));
 
-module.exports = app
+    app.get(/.*/, (req, res, next) => {
+        if (req.path.startsWith("/api/")) {
+            return next();
+        }
+
+        res.sendFile(path.join(frontendPath, "index.html"));
+    });
+}
+
+module.exports = app;
